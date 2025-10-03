@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kaspazof-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - WALLET_ENCRYPTION_KEY=${WALLET_ENCRYPTION_KEY}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
+      - KASPAD_RPC_HOST=kaspad
+      - KASPAD_RPC_PORT=16110
+    volumes:
+      - ./backend:/app
+      - wallet-data:/app/data
+    depends_on:
+      - kaspad
+    networks:
+      - kaspazof-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kaspazof-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - kaspazof-network
+    restart: unless-stopped
+
+  kaspad:
+    image: kaspanet/kaspad:latest
+    container_name: kaspazof-kaspad
+    ports:
+      - "16110:16110"
+      - "16111:16111"
+    volumes:
+      - kaspad-data:/app/data
+    command: >
+      --appdir=/app/data
+      --rpclisten=0.0.0.0:16110
+      --rpcuser=${KASPAD_RPC_USER:-kaspa}
+      --rpcpass=${KASPAD_RPC_PASS:-changeme}
+    networks:
+      - kaspazof-network
+    restart: unless-stopped
+
+volumes:
+  wallet-data:
+  kaspad-data:
+
+networks:
+  kaspazof-network:
+    driver: bridge
